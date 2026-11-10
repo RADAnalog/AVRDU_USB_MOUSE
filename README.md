@@ -2,7 +2,7 @@
 
 <img width="647" height="863" alt="image" src="https://github.com/user-attachments/assets/ca86377a-f66c-47fc-a986-1a95dfda9bc9" />
 
-A compact version of the Mouse Shaker
+A compact version of the Mouse Shaker.  My prototype PCB assumed I could use PF6 to drive the "Activity" LED since the DU is not programmed (by default) to use this pin as /Reset.  However, PF6 can only be used as an input! I had to jumper PA0 to PF6 to drive the LED.  Always read the fine print.
 
 A basic USB HID Mouse library for the Microchip AVRxxDU series of microcontrollers
 
@@ -18,4 +18,4 @@ NOTE: Microchip Studio 7 and Atmel ICE - realizing that Microchip Studio 7 has b
 -----
 a) To use the newer devices with the ATMEL-ICE, the ICE firmware needs to be updated to at least Version 1.2e.  Microchip Studio 7 support ended some time (years) ago but I prefer using it over MPLABX.  However, Studio no longer keeps the firmware packs up to date through the Device Pack Manager.  I found I had to install MPLABX from Microchip, create an empty main.c and load the program to force MPLABX to update the firmware (there might be a way to manually load the firmware pack directly into Studio 7).
 
-b) An annoying feature (to me at least) of Microchip Studio in that Studio continually inspects String Descriptors for HID devices after enumeration has completed.  You can disable this from happening while Studio is running if you set all of the descriptor String indices to 0.
+b) An annoying feature (to me at least) of Microchip Studio is that Studio continually inspects String Descriptors for HID devices after enumeration has completed.  You can disable this from happening while Studio is running if you set all of the descriptor String indices to 0.
