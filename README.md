@@ -1,6 +1,7 @@
 <img width="647" height="863" alt="image" src="https://github.com/user-attachments/assets/df815d88-afc7-4808-b8c4-9355c1ac3ea3" />
 
 <img width="647" height="863" alt="image" src="https://github.com/user-attachments/assets/ca86377a-f66c-47fc-a986-1a95dfda9bc9" />
+
 A compact version of the Mouse Shaker
 
 A basic USB HID Mouse library for the Microchip AVRxxDU series of microcontrollers
