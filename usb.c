@@ -234,7 +234,7 @@ bool usb_mouseReportSent_testAndClear(void)
 }
 
 //*****************************************************************************
-// TCA0 interrupt handler
+// TCA0 interrupt handler.
 // Timer is used to delay clearing NAK on the mouse endpoint until the timeout
 // interval has been reached.  A tick counter is used to extend the range.
 //*****************************************************************************

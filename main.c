@@ -75,12 +75,12 @@ int main(void)
 			
 			if (usb_state() == Usb_State_Configured)
 			{
-				if (isMouseReportReadyToSend_TestAndClear())
+				if (usb_mouseReportReadyToSend_testAndClear())
 				{
 					// Arm endpoint so the host collects the report on its next IN token
-					usb_hidMouseReportArm();
+					usb_mouseReportArm();
 				}
-				else if (usb_hidMouseReportSent_TestAndClear())
+				else if (usb_mouseReportSent_testAndClear())
 				{
 					// Blink Activity LED off briefly to show report was sent
 					led_activity(OFF);
