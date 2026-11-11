@@ -32,6 +32,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 #include <stdio.h>							// printf
 #include <stdbool.h>
 #include <string.h>							// memcpy
@@ -209,23 +210,27 @@ void usb_hidMouseReportArm(void)
 // Returns true/false if timer has signaled report is to be sent and clears the request flag
 bool isMouseReportReadyToSend_TestAndClear(void)
 {
-	if (usbMouseReportRequestFlag)
+	bool ready;
+
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 	{
+		ready = usbMouseReportRequestFlag;
 		usbMouseReportRequestFlag = false;
-		return true;
 	}
-	return false;
+	return ready;
 }
 
 // Returns the Report sent status and clears the sent flag
 bool usb_hidMouseReportSent_TestAndClear(void)
 {
-	if (usbMouseReportSentFlag)
+	bool sent;
+
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 	{
+		sent = usbMouseReportSentFlag;
 		usbMouseReportSentFlag = false;
-		return true;
 	}
-	return false;	
+	return sent;
 }
 
 //*****************************************************************************
