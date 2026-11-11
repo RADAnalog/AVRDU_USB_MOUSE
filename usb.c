@@ -82,6 +82,7 @@ volatile bool usbMouseReportSentFlag = false;
 //	- Configure USB peripheral
 //	- Initialize Endpoints
 //	- Setup default Mouse Report data
+//	- Initialize TCA0 (NAK clear timer)
 //	- Enable Device and Endpoint interrupts
 //*****************************************************************************
 void usb_init(void)
@@ -205,7 +206,7 @@ void usb_hidMouseReportArm(void)
 	usbClearInNak(EP1);
 }
 
-// Returns true/false if timer has signaled report is to be sent, and clears flag
+// Returns true/false if timer has signaled report is to be sent and clears the request flag
 bool isMouseReportReadyToSend_TestAndClear(void)
 {
 	if (usbMouseReportRequestFlag)
@@ -234,7 +235,7 @@ bool usb_hidMouseReportSent_TestAndClear(void)
 //*****************************************************************************
 ISR(TCA0_OVF_vect)
 {
-	volatile static uint8_t overflowTickCounter = 0;
+	static uint8_t overflowTickCounter = 0;
 	
 	// Clear interrupt flag
 	TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
