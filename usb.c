@@ -3,15 +3,15 @@
 //
 //	HID Mouse implementation with Control (EP0) and Interrupt (EP1.IN) channels
 //	
-//	1. EP0 IN multipacket pitfall during enumeration - be aware if you reduce BUFSIZE
+//	1. EP0 IN multipacket during enumeration - be aware if you reduce BUFSIZE
 //	----------
 //	The first GET_DESCRIPTOR Device request from the host is wLength = 8,
 //	because the host doesn't yet know bMaxPacketSize0. It reads the first 8 bytes,
 //	ends the data stage early, and then issues a bus RESET.  If BUFSIZE = 8 or 16,
 //	and in multipacket mode, the device will assume further IN tokens will arrive
 //	requesting the remaining bytes.  The host does not issue further IN tokens in
-//	this case and TRNCOMPL never asserts.  The busy-wait loop hangs forever.  The
-//  simple workaround is to set the BUFIZE >= descriptor size.
+//	this case and TRNCOMPL never asserts.  The busy-wait loop hangs forever.  To
+//  prevent this condition, set the BUFIZE >= Device_Descriptor size.
 //
 //	2. Notes on using printf to display the setup packet
 //	----------
@@ -44,6 +44,9 @@
 // Specifier forces inline independent of optimization level
 #define ALWAYS_INLINE inline __attribute__((always_inline))
 
+// Number of seconds before sending Mouse Report
+#define NAK_TIMEOUT_SEC			20
+
 //*****************************************************************************
 //	Private Function declarations
 //*****************************************************************************
@@ -71,6 +74,8 @@ Usb_HidMouseReport_t hidMouseReportBuffer;			// EP1.IN Mouse report buffer (to H
 // ISR modified flags
 volatile Usb_State_t usbState = Usb_State_Default;	// Current USB state
 volatile bool usbSuspended = false;					// Suspend=true, Resume=false
+volatile bool usbMouseReportRequestFlag = false;
+volatile bool usbMouseReportSentFlag = false;
 
 //*****************************************************************************
 //	Initialize USB interface
@@ -130,14 +135,26 @@ void usb_init(void)
 	
 	// -- Initialize Mouse report data --
 
-	// Windows Host assumes mouse activity when NAK is cleared, no relative movement is necessary
-	// This data does not need to change.
+	// Windows Host assumes mouse activity when NAK is cleared, no relative movement is necessary,
+	// this data does not change.
 	hidMouseReportBuffer.buttons = 0b00000000;
 	hidMouseReportBuffer.x = 0x00;
 	hidMouseReportBuffer.y = 0x00;
 				
-	// Number of bytes to transfer on EP1.IN --
+	// Number of bytes to transfer on EP1.IN
 	endpointTable.EP[EP1].IN.CNT = 3;
+	
+	
+	// -- Initialize TCA0: free running EP1.IN NAK clear timer --
+	
+	// Enable overflow interrupt
+	TCA0_SINGLE_INTCTRL = TCA_SINGLE_OVF_bm;
+	
+	// PER = ((F_CPU / DIV1024 * 1sec) - 1)
+	TCA0_SINGLE_PER = 23437U;
+	
+	// Configure prescaler and start
+	TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1024_gc | TCA_SINGLE_ENABLE_bm;	
 	
 	
 	// -- Enable USB interrupts --
@@ -168,22 +185,71 @@ void usb_disconnect(void)
 	usbState = Usb_State_Detached;
 }
 
-// Accessor: Returns the value of the USB state
+// Returns the value of the USB state
 Usb_State_t usb_state(void)
 {
 	return usbState;
 }
 
-// Accessor: Returns the value of the Suspend flag: true=Suspend, false=Resume
+// Returns the value of the Suspend flag: true=Suspend, false=Resume
 bool usb_isSuspended(void)
 {
 	return usbSuspended;
 }
 
 // Arms the endpoint: Host will collect the Report on its next IN token
-void usb_hidMouseSendReport(void)
+void usb_hidMouseReportArm(void)
 {
+	usbMouseReportSentFlag = false;	
+	
 	usbClearInNak(EP1);
+}
+
+// Returns true/false if timer has signaled report is to be sent, and clears flag
+bool isMouseReportReadyToSend_TestAndClear(void)
+{
+	if (usbMouseReportRequestFlag)
+	{
+		usbMouseReportRequestFlag = false;
+		return true;
+	}
+	return false;
+}
+
+// Returns the Report sent status and clears the sent flag
+bool usb_hidMouseReportSent_TestAndClear(void)
+{
+	if (usbMouseReportSentFlag)
+	{
+		usbMouseReportSentFlag = false;
+		return true;
+	}
+	return false;	
+}
+
+//*****************************************************************************
+// TCA0 interrupt handler
+// Timer is used to delay clearing NAK on the mouse endpoint until the timeout
+// interval has been reached.  A tick counter is used to extend the range.
+//*****************************************************************************
+ISR(TCA0_OVF_vect)
+{
+	volatile static uint8_t overflowTickCounter = 0;
+	
+	// Clear interrupt flag
+	TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
+	
+	// Extend TCA0 timer range
+	overflowTickCounter++;
+	
+	if (overflowTickCounter >= NAK_TIMEOUT_SEC)
+	{
+		// Signal to main loop
+		usbMouseReportRequestFlag = true;
+		
+		// Reset the overflow counter
+		overflowTickCounter = 0;
+	}
 }
 
 //*****************************************************************************
@@ -273,6 +339,7 @@ ISR(USB0_TRNCOMPL_vect)
 			usbClearInTransaction(EP1);
 			
 			// The EP1.IN report has been successfully received by the Host
+			usbMouseReportSentFlag = true;
 		}
 	}
 }
@@ -283,7 +350,7 @@ ISR(USB0_TRNCOMPL_vect)
 static void usb_handleSetupRequest(void)
 {
 	// Debug - print Setup Packet
-	printf("%02x %02x %04x %04x %04x\n", setupBuffer.bmRequestType, setupBuffer.bRequest, setupBuffer.wValue, setupBuffer.wIndex, setupBuffer.wLength);
+	//printf("%02x %02x %04x %04x %04x\n", setupBuffer.bmRequestType, setupBuffer.bRequest, setupBuffer.wValue, setupBuffer.wIndex, setupBuffer.wLength);
 	
 	// Decode Setup request
 	switch (setupBuffer.bmRequestType & BM_REQUEST_TYPE_MASK)

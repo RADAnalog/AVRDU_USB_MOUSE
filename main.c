@@ -8,9 +8,7 @@
 //	Windows accepts any valid data as "activity" so this approach prevents the Windows
 //  session from timing out without actually moving the mouse.
 //
-//	No checking is done to confirm the report has been sent before the next NAK is cleared.
-//	This is reasonable as the NAK clear interval is 20 seconds.
-//	                        _____
+//                          _____
 //                    GND 1|*    |14 VDD+
 //          (IN only) PF6 2|RST  |13 PD7
 //                   UPDI 3|     |12 PD6 -> Suspend LED
@@ -27,10 +25,8 @@
 //	The AVRxxDU datasheet refers to a "transaction" as an IN or OUT packet followed by ACK/NAK.
 //	USB refers to a "transaction" as the completion of Token->Data->Handshake sequence.
 //	
-//	Caveat on “hidMouseSendReport”: the device never pushes anything on USB. 
-//	The host polls, and the endpoint answers with data instead of a NAK. 
-//	So the report goes out on the Host’s next poll, not when the function returns.
-//	No checking is done to see if the report was sent.
+//	This device can't push anything on USB. The host polls, and the endpoint answers 
+//	with data instead of a NAK. When NAK is cleared, the report goes out on the Host’s next poll.
 //
 //  Author : Richard
 //	Created: 2026-Oct-22 - Inherit from AVR16DU14 original project
@@ -41,7 +37,6 @@
 #include <avr/io.h>
 #include <avr/xmega.h>		// _PROTECTED_WRITE
 #include <avr/interrupt.h>
-#include <util/atomic.h>
 #include <util/delay.h>
 #include <stdio.h>			// printf
 #include <stdbool.h>
@@ -49,19 +44,12 @@
 #include "led.h"
 //#include "usart.h"
 
-// Number of seconds before sending Mouse Report
-#define NAK_TIMEOUT_SEC		20			
 
 //*****************************************************************************
 //	Function Definitions
 //*****************************************************************************
 void init(void);
-bool isMouseReportReadyToSend(void);
 
-//*****************************************************************************
-//	Variable Definitions
-//*****************************************************************************
-static volatile bool mouseReportPendingFlag = false;
 
 //*****************************************************************************
 //	Main
@@ -87,12 +75,14 @@ int main(void)
 			
 			if (usb_state() == Usb_State_Configured)
 			{
-				if (isMouseReportReadyToSend())
+				if (isMouseReportReadyToSend_TestAndClear())
 				{
 					// Arm endpoint so the host collects the report on its next IN token
-					usb_hidMouseSendReport();
-				
-					// Blink Activity LED off briefly to show a report was queued
+					usb_hidMouseReportArm();
+				}
+				else if (usb_hidMouseReportSent_TestAndClear())
+				{
+					// Blink Activity LED off briefly to show report was sent
 					led_activity(OFF);
 					_delay_ms(50);
 					led_activity(ON);
@@ -117,53 +107,4 @@ void init(void)
 	
 	// Wait for system clock to stabilize
 	while((CLKCTRL.MCLKSTATUS & CLKCTRL_OSCHFS_bm) == 0);
-	
-	// Initialize TCA0: free running EP1.IN NAK clear timer
-	
-	// Enable overflow interrupt
-	TCA0_SINGLE_INTCTRL = TCA_SINGLE_OVF_bm;
-	
-	// PER = ((F_CPU / DIV1024 * 1sec) - 1)
-	TCA0_SINGLE_PER = 23437U;	
-	
-	// Configure prescaler and start
-	TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1024_gc | TCA_SINGLE_ENABLE_bm;	
-}
-
-//*****************************************************************************
-// Returns true/false if timer has signaled report is to be sent.
-//*****************************************************************************
-bool isMouseReportReadyToSend(void)
-{
-	if (mouseReportPendingFlag)
-	{
-		mouseReportPendingFlag = false;
-		return true;
-	}
-	return false;
-}
-
-//*****************************************************************************
-// TCA0 interrupt handler
-// Timer is used to delay clearing NAK on the mouse endpoint until the timeout
-// interval has been reached.  A tick counter is used to extend the range.
-//*****************************************************************************
-ISR(TCA0_OVF_vect)
-{
-	volatile static uint8_t overflowTickCounter = 0;
-	
-	// Clear interrupt flag
-	TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
-	
-	// Extend TCA0 timer range
-	overflowTickCounter++;
-	
-	if (overflowTickCounter >= NAK_TIMEOUT_SEC)
-	{
-		// Signal to main loop
-		mouseReportPendingFlag = true;
-		
-		// Reset the overflow counter
-		overflowTickCounter = 0;
-	}
 }
