@@ -200,7 +200,7 @@ bool usb_isSuspended(void)
 }
 
 // Arms the endpoint: Host will collect the Report on its next IN token
-void usb_hidMouseReportArm(void)
+void usb_mouseReportArm(void)
 {
 	usbMouseReportSentFlag = false;	
 	
@@ -208,7 +208,7 @@ void usb_hidMouseReportArm(void)
 }
 
 // Returns true/false if timer has signaled report is to be sent and clears the request flag
-bool isMouseReportReadyToSend_TestAndClear(void)
+bool usb_mouseReportReadyToSend_testAndClear(void)
 {
 	bool ready;
 
@@ -221,7 +221,7 @@ bool isMouseReportReadyToSend_TestAndClear(void)
 }
 
 // Returns the Report sent status and clears the sent flag
-bool usb_hidMouseReportSent_TestAndClear(void)
+bool usb_mouseReportSent_testAndClear(void)
 {
 	bool sent;
 

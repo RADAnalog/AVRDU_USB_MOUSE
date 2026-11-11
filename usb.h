@@ -120,9 +120,9 @@ typedef struct WORD_ALIGN {
 void usb_init(void);
 void usb_connect(void);
 void usb_disconnect(void);
-void usb_hidMouseReportArm(void);
-bool isMouseReportReadyToSend_TestAndClear(void);
-bool usb_hidMouseReportSent_TestAndClear(void);
+void usb_mouseReportArm(void);
+bool usb_mouseReportReadyToSend_testAndClear(void);
+bool usb_mouseReportSent_testAndClear(void);
 
 // -- Public Accessor functions --
 
