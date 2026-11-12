@@ -6,11 +6,22 @@ A compact version of the Mouse Shaker.  My prototype PCB assumed I could use PF6
 
 Project Description
 ----
-A basic USB HID Mouse library for the Microchip AVRxxDU series of microcontrollers
+A basic USB HID Mouse library for the Microchip AVR_DU series of microcontrollers
 
-The prototype was developed on the AVR16DU14 using Microchip Studio 7 (see notes below) and the Cynthion USB packet analyzer (from Great Scott Gadgets).
+Purpose
+----
+This library was developed to learn how to implement the USB peripheral on the newer AVR Series 2 MCUs (AVR_DU). The example application is a mouse shaker: a device that enumerates as a USB HID mouse and keeps a Windows session from timing out. Some organizations lock down Windows power and lock-screen settings, so this is a hardware workaround. 🙂
 
-The purpose of developing this library was to learn how to implement a USB peripheral on the newer Series 2 AVR MCUs.  This implementation is for a "mouse shaker" - a device that enumerates as a mouse and keeps a Windows session from timing out (some organizations lock down Windows settings, so this is a hardware workaround :).
+What It Does
+----
+The DU enumerates as a standard HID mouse and periodically reports “activity” without actually moving the cursor.
+
+- At initialization, the DU starts a 20-second timer (TCA0).
+- Every 20 seconds, the timer ISR sets a flag that is used to clear EP[1].STATUS.BUSNACK, which clears the NAK condition and arms the IN endpoint.
+- On the next IN token, the host receives a report with the button byte and both (x, y) deltas set to zero, and the host acknowledges it.
+- When the IN transaction completes, an activity LED flashes briefly.
+
+Because the relative coordinates are always zero, the cursor never moves. On the Windows machines tested, a completed mouse IN transaction is enough to reset the idle timer.
 
 NOTE: 
 -----
