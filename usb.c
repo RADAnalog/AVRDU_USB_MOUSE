@@ -6,7 +6,7 @@
 //	1. EP0 IN multipacket during enumeration - be aware if you reduce BUFSIZE
 //	----------
 //	The first GET_DESCRIPTOR Device request from the host is wLength = 8,
-//	because the host doesn't yet know bMaxPacketSize0. It reads the first 8 bytes,
+//	because the host doesn't yet know bMaxPacketSize0. Host reads the first 8 bytes,
 //	ends the data stage early, and then issues a bus RESET.  If BUFSIZE = 8 or 16,
 //	and in multipacket mode, the device will assume further IN tokens will arrive
 //	requesting the remaining bytes.  The host does not issue further IN tokens in
@@ -200,15 +200,15 @@ bool usb_isSuspended(void)
 }
 
 // Arms the endpoint: Host will collect the Report on its next IN token
-void usb_mouseReportArm(void)
+void usb_mouseReportEnable(void)
 {
 	usbMouseReportSentFlag = false;	
 	
 	usbClearInNak(EP1);
 }
 
-// Returns true/false if timer has signaled report is to be sent and clears the request flag
-bool usb_mouseReportReadyToSend_testAndClear(void)
+// Returns true/false if timer has signaled report is to be sent and atomically clears the request flag
+bool usb_mouseReportReadyToSend_getAndClear(void)
 {
 	bool ready;
 
@@ -221,8 +221,8 @@ bool usb_mouseReportReadyToSend_testAndClear(void)
 	return ready;
 }
 
-// Returns the Report sent status and clears the sent flag
-bool usb_mouseReportSent_testAndClear(void)
+// Returns the Report sent status and atomically clears the sent flag
+bool usb_mouseReportSent_getAndClear(void)
 {
 	bool sent;
 

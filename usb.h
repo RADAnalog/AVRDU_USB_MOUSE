@@ -120,14 +120,14 @@ typedef struct WORD_ALIGN {
 void usb_init(void);
 void usb_connect(void);
 void usb_disconnect(void);
-void usb_mouseReportArm(void);
-bool usb_mouseReportReadyToSend_testAndClear(void);
-bool usb_mouseReportSent_testAndClear(void);
+void usb_mouseReportEnable(void);
+bool usb_mouseReportReadyToSend_getAndClear(void);
+bool usb_mouseReportSent_getAndClear(void);
 
 // -- Public Accessor functions --
 
 // Returns current USB state
-Usb_State_t usb_state(void);
+Usb_State_t usb_getState(void);
 
 // Returns Suspend status.  true=Suspend, false=Resume
 bool usb_isSuspended(void);
