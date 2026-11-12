@@ -21,7 +21,7 @@ The DU enumerates as a standard HID mouse and periodically reports â€œactivityâ€
 - On the next IN token, the host receives a report with the button byte and both (x, y) deltas set to zero, and the host acknowledges it.
 - When the IN transaction completes, an activity LED flashes briefly.
 
-Because the relative coordinates are always zero, the cursor never moves. On the Windows machines tested, a completed mouse IN transaction is enough to reset the idle timer.
+Because the relative coordinates are always zero, the cursor never moves. On the Windows machines tested, a completed mouse IN transaction is enough to reset the Windows session idle timer.
 
 NOTE: 
 -----
