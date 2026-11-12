@@ -5,8 +5,8 @@
 //	Date:	2026-03-10
 //
 //*****************************************************************************
-#ifndef DESCRIPTOR_MOUSE_H
-#define DESCRIPTOR_MOUSE_H
+#ifndef MOUSE_DESCRIPTOR_H
+#define MOUSE_DESCRIPTOR_H
 
 #include <stddef.h>		// wchar_t
 
