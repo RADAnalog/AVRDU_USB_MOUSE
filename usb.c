@@ -70,7 +70,7 @@ Usb_Endpoint_Table_t endpointTable;
 //	Endpoint buffers
 Usb_SetupPacket_t setupBuffer;						// EP0.OUT Setup packet buffer (from Host)
 uint8_t controlBuffer[64];							// EP0.IN Control packet buffer (to Host)
-Usb_HidMouseReport_t hidMouseReportBuffer;			// EP1.IN Mouse report buffer (to Host)
+Usb_HidMouseReport_t mouseReportBuffer;				// EP1.IN Mouse report buffer (to Host)
 
 // ISR modified flags
 volatile Usb_State_t usbState = Usb_State_Default;	// Current USB state
@@ -129,7 +129,7 @@ void usb_init(void)
 	// Initialize Interrupt EP1.IN packet (Mouse report) --
 	endpointTable.EP[EP1].IN.CTRL		=	USB_TYPE_BULKINT_gc |
 											USB_BUFSIZE_DEFAULT_BUF8_gc;	// Must match .HidReportInEndpoint.wMaxPacketSize
-	endpointTable.EP[EP1].IN.DATAPTR	=	(uint16_t)&hidMouseReportBuffer;// HID Report buffer
+	endpointTable.EP[EP1].IN.DATAPTR	=	(uint16_t)&mouseReportBuffer;// HID Report buffer
 	endpointTable.EP[EP1].IN.STATUS		=	0;
 	endpointTable.EP[EP1].IN.CNT		=	0;
 	endpointTable.EP[EP1].IN.MCNT		=	0;	
@@ -139,9 +139,9 @@ void usb_init(void)
 
 	// Windows Host assumes mouse activity when NAK is cleared, no relative movement is necessary,
 	// this data does not change.
-	hidMouseReportBuffer.buttons = 0b00000000;
-	hidMouseReportBuffer.x = 0x00;
-	hidMouseReportBuffer.y = 0x00;
+	mouseReportBuffer.buttons = 0b00000000;
+	mouseReportBuffer.x = 0x00;
+	mouseReportBuffer.y = 0x00;
 				
 	// Number of bytes to transfer on EP1.IN
 	endpointTable.EP[EP1].IN.CNT = 3;
@@ -188,7 +188,7 @@ void usb_disconnect(void)
 }
 
 // Returns the value of the USB state
-Usb_State_t usb_state(void)
+Usb_State_t usb_getState(void)
 {
 	return usbState;
 }
@@ -212,6 +212,7 @@ bool usb_mouseReportReadyToSend_testAndClear(void)
 {
 	bool ready;
 
+	// Block of code is guaranteed to execute atomically
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 	{
 		ready = usbMouseReportRequestFlag;
@@ -225,6 +226,7 @@ bool usb_mouseReportSent_testAndClear(void)
 {
 	bool sent;
 
+	// Block of code is guaranteed to execute atomically
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 	{
 		sent = usbMouseReportSentFlag;
@@ -236,25 +238,25 @@ bool usb_mouseReportSent_testAndClear(void)
 //*****************************************************************************
 // TCA0 interrupt handler.
 // Timer is used to delay clearing NAK on the mouse endpoint until the timeout
-// interval has been reached.  A tick counter is used to extend the range.
+// interval has been reached.  A counter is used to extend the range.
 //*****************************************************************************
 ISR(TCA0_OVF_vect)
 {
-	static uint8_t overflowTickCounter = 0;
+	static uint8_t overflowCounter = 0;
 	
 	// Clear interrupt flag
 	TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
 	
 	// Extend TCA0 timer range
-	overflowTickCounter++;
+	overflowCounter++;
 	
-	if (overflowTickCounter >= NAK_TIMEOUT_SEC)
+	if (overflowCounter >= NAK_TIMEOUT_SEC)
 	{
 		// Signal to main loop
 		usbMouseReportRequestFlag = true;
 		
 		// Reset the overflow counter
-		overflowTickCounter = 0;
+		overflowCounter = 0;
 	}
 }
 
